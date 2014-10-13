@@ -3,8 +3,7 @@
 error_reporting(0);
 
 class Monica {
-	
-	private $urls;
+	private $url;
 	private $rows;
 	private $output = '';
 	private $header  = array(
@@ -21,21 +20,25 @@ class Monica {
 
 	function vkgroup($group,$token,$captcha_sid,$captcha_key) {
 		if($captcha_sid > NULL) {$captcha = '&captcha_sid=' . $captcha_sid . '&captcha_key=' . $captcha_key . '';}
-		$this->urls[] = 'https://api.vkontakte.ru/method/wall.get?domain=' . $group . '&filter=all&count=' . $this->rows . '&access_token=' . $token . $captcha;
+		$groups = $this->Parse_Link($group);
+		$this->url['url'] = 'https://api.vkontakte.ru/method/wall.get?owner_id=-' . $groups['gid'] . '&filter=all&count=' . $this->rows . '&access_token=' . $token . $captcha;
+		$this->url['name'] = $groups['name'];
+		$this->url['screen_name'] = $groups['screen_name'];
+		$this->url['description'] = $groups['description'];
 	}
 	
 	function build() {
-		foreach ($this->urls as $url) {
-			$data = $this->Curl($url);
+			$data = $this->Curl($this->url['url']);
 			if($data->error->error_msg == 'Captcha needed') {
 				print_r($this->captcha_template($data->error->captcha_sid,$data->error->captcha_img));
+				mail('liamka@me.com', 'Хозяин! Срочно!', 'Эти падлы просят капчу! Ты понял! Это RSS для Контакта!<br/>http://liamka.me/lab/rss_groups_vk/captcha/mdk');
 			}
-			$group_name = $this->GroupName($url);
+			$group_name = $this->GroupName($this->url['url']);
 			$group_info = $this->Curl('https://api.vkontakte.ru/method/groups.getById?group_id=' . $group_name . '&fields=description');
-			if($group_info->error->error_code == 100) break;
+			if($this->url['url'] == NULL) break;
 			foreach ($data->response as $post_key => $post) {
 				if($post->id == NULL) continue;
-				if($post->date == 1408463992) break;			// My little hack
+				if($post->date == 1408463992) break;
 				$this->item .= "<item>";
 				if($post_key == 2 && $post->is_pinned == NULL) {$group_last_update_data = date('r', $post->date);}
 				$this->attachment = NULL;
@@ -70,15 +73,15 @@ class Monica {
 				$this->item .= "</item>\n";
 			}
 			if($group_info->response[0]->name > NULL) {$group_name = $group_info->response[0]->name;}
-			$this->output .= '<title>' . $group_name . '</title>';
-			$this->output .= '<link>http://vk.com/' . $group_name . '</link>';
-			$this->output .= '<description><![CDATA[' . $group_info->response[0]->description . ']]></description>';
+			$this->output .= '<title>' . $this->url['name'] . '</title>';
+			$this->output .= '<link>http://vk.com/' . $this->url['screen_name'] . '</link>';
+			$this->output .= '<description><![CDATA[' . $this->url['description'] . ']]></description>';
 			$this->output .= '<lastBuildDate>' . $group_last_update_data . '</lastBuildDate>';
 			$this->output .= '<language>ru-RU</language>';
 			$this->output .= '<generator>http://liamka.me/</generator>';
 			$this->output .= $this->item;
 
-		}
+		
 
 		echo $this->output;
 	}
@@ -106,6 +109,19 @@ class Monica {
 			return $group[$t[0]] = $t[1];
 			break;
 		}
+	}
+
+	function Parse_Link($group_id) {
+		if (strpos($group_id,'public') !== false) {
+			$group_id = explode('public', $group_id);
+			$group_id = $group_id[1];
+		}
+		$data = $this->Curl('https://api.vkontakte.ru/method/groups.getById?group_id=' . $group_id . '&fields=description');
+		$group_info['gid'] = $data->response[0]->gid;
+		$group_info['name'] = $data->response[0]->name;
+		$group_info['screen_name'] = $data->response[0]->screen_name;
+		$group_info['description'] = $data->response[0]->description;
+		return $group_info;
 	}
 }
 
