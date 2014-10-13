@@ -31,7 +31,7 @@ class Monica {
 			$data = $this->Curl($this->url['url']);
 			if($data->error->error_msg == 'Captcha needed') {
 				print_r($this->captcha_template($data->error->captcha_sid,$data->error->captcha_img));
-				mail('liamka@me.com', 'Хозяин! Срочно!', 'Эти падлы просят капчу! Ты понял! Это RSS для Контакта!<br/>http://liamka.me/lab/rss_groups_vk/captcha/mdk');
+				mail('mail@me.com', 'Хозяин! Срочно!', 'Эти падлы просят капчу! Ты понял! Это RSS для Контакта!<br/>http://liamka.me/lab/rss_groups_vk/captcha/mdk');
 			}
 			$group_name = $this->GroupName($this->url['url']);
 			$group_info = $this->Curl('https://api.vkontakte.ru/method/groups.getById?group_id=' . $group_name . '&fields=description');
